@@ -39,6 +39,25 @@ func TestLetStatements(t *testing.T) {
 	}
 }
 
+func TestReturnStatements(t *testing.T) {
+	input := `return 5;
+	return 10;
+	return 993322;`
+
+	l := lexer.New(input)
+	p := parser.New(l)
+
+	program := p.ParseProgram()
+	checkParserErrors(t, p)
+	assert.Len(t, program.Statements, 3)
+
+	for _, stmt := range program.Statements {
+		_, ok := stmt.(*ast.ReturnStatement)
+		assert.True(t, ok)
+		assert.Equal(t, "return", stmt.TokenLiteral())
+	}
+}
+
 func checkParserErrors(t *testing.T, p *parser.Parser) {
 	errors := p.Errors()
 	assert.Len(t, errors, 0)
