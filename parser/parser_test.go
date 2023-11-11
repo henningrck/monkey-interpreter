@@ -73,10 +73,7 @@ func TestIdentifierExpressions(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, "something", expStmt.TokenLiteral())
 
-	ident, ok := expStmt.Expression.(*ast.Identifier)
-	assert.True(t, ok)
-	assert.Equal(t, "something", ident.Value)
-	assert.Equal(t, "something", ident.TokenLiteral())
+	checkLiteral(t, expStmt.Expression, "something")
 }
 
 func TestIntegerLiteralExpressions(t *testing.T) {
@@ -92,7 +89,7 @@ func TestIntegerLiteralExpressions(t *testing.T) {
 	expStmt, ok := program.Statements[0].(*ast.ExpressionStatement)
 	assert.True(t, ok)
 	assert.Equal(t, "5", expStmt.TokenLiteral())
-	checkIntegerLiteral(t, expStmt.Expression, 5)
+	checkLiteral(t, expStmt.Expression, 5)
 }
 
 func TestPrefixExpressions(t *testing.T) {
@@ -119,7 +116,7 @@ func TestPrefixExpressions(t *testing.T) {
 		prefixExp, ok := expStmt.Expression.(*ast.PrefixExpression)
 		assert.True(t, ok)
 		assert.Equal(t, test.operator, prefixExp.Operator)
-		checkIntegerLiteral(t, prefixExp.Right, test.value)
+		checkLiteral(t, prefixExp.Right, test.value)
 	}
 }
 
@@ -155,8 +152,8 @@ func TestInfixExpressions(t *testing.T) {
 		assert.True(t, ok)
 		assert.Equal(t, test.operator, infixExp.Operator)
 
-		checkIntegerLiteral(t, infixExp.Left, test.leftValue)
-		checkIntegerLiteral(t, infixExp.Right, test.rightValue)
+		checkLiteral(t, infixExp.Left, test.leftValue)
+		checkLiteral(t, infixExp.Right, test.rightValue)
 	}
 }
 
@@ -228,6 +225,27 @@ func TestOperatorPrecedenceParsing(t *testing.T) {
 func checkParserErrors(t *testing.T, p *parser.Parser) {
 	errors := p.Errors()
 	assert.Len(t, errors, 0)
+}
+
+func checkLiteral(t *testing.T, exp ast.Expression, expected any) {
+	switch value := expected.(type) {
+	case string:
+		checkIdentifier(t, exp, value)
+	case int:
+		checkIntegerLiteral(t, exp, int64(value))
+	case int64:
+		checkIntegerLiteral(t, exp, value)
+	default:
+		t.Errorf("type of exp not handled, got %T", exp)
+		t.Fail()
+	}
+}
+
+func checkIdentifier(t *testing.T, exp ast.Expression, value string) {
+	ident, ok := exp.(*ast.Identifier)
+	assert.True(t, ok)
+	assert.Equal(t, value, ident.Value)
+	assert.Equal(t, value, ident.TokenLiteral())
 }
 
 func checkIntegerLiteral(t *testing.T, exp ast.Expression, value int64) {
