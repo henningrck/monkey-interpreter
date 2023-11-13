@@ -92,14 +92,33 @@ func TestIntegerLiteralExpressions(t *testing.T) {
 	checkLiteral(t, expStmt.Expression, 5)
 }
 
+func TestBooleanLiteralExpressions(t *testing.T) {
+	input := `true;`
+
+	l := lexer.New(input)
+	p := parser.New(l)
+
+	program := p.ParseProgram()
+	checkParserErrors(t, p)
+	assert.Len(t, program.Statements, 1)
+
+	expStmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	assert.True(t, ok)
+	assert.Equal(t, "true", expStmt.TokenLiteral())
+
+	checkLiteral(t, expStmt.Expression, true)
+}
+
 func TestPrefixExpressions(t *testing.T) {
 	tests := []struct {
 		input    string
 		operator string
-		value    int64
+		value    any
 	}{
 		{"!5;", "!", 5},
 		{"-15;", "-", 15},
+		{"!true;", "!", true},
+		{"!false;", "!", false},
 	}
 
 	for _, test := range tests {
@@ -123,9 +142,9 @@ func TestPrefixExpressions(t *testing.T) {
 func TestInfixExpressions(t *testing.T) {
 	tests := []struct {
 		input      string
-		leftValue  int64
+		leftValue  any
 		operator   string
-		rightValue int64
+		rightValue any
 	}{
 		{"5 + 5;", 5, "+", 5},
 		{"5 - 5;", 5, "-", 5},
@@ -135,6 +154,9 @@ func TestInfixExpressions(t *testing.T) {
 		{"5 < 5;", 5, "<", 5},
 		{"5 == 5;", 5, "==", 5},
 		{"5 != 5;", 5, "!=", 5},
+		{"true == true", true, "==", true},
+		{"true != false", true, "!=", false},
+		{"false == false", false, "==", false},
 	}
 
 	for _, test := range tests {
@@ -210,6 +232,22 @@ func TestOperatorPrecedenceParsing(t *testing.T) {
 			"3 + 4 * 5 == 3 * 1 + 4 * 5",
 			"((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))",
 		},
+		{
+			"true",
+			"true",
+		},
+		{
+			"false",
+			"false",
+		},
+		{
+			"3 > 5 == false",
+			"((3 > 5) == false)",
+		},
+		{
+			"3 < 5 == true",
+			"((3 < 5) == true)",
+		},
 	}
 
 	for _, test := range tests {
@@ -235,6 +273,8 @@ func checkLiteral(t *testing.T, exp ast.Expression, expected any) {
 		checkIntegerLiteral(t, exp, int64(value))
 	case int64:
 		checkIntegerLiteral(t, exp, value)
+	case bool:
+		checkBooleanLiteral(t, exp, value)
 	default:
 		t.Errorf("type of exp not handled, got %T", exp)
 		t.Fail()
@@ -253,4 +293,11 @@ func checkIntegerLiteral(t *testing.T, exp ast.Expression, value int64) {
 	assert.True(t, ok)
 	assert.Equal(t, value, lit.Value)
 	assert.Equal(t, fmt.Sprintf("%d", value), lit.TokenLiteral())
+}
+
+func checkBooleanLiteral(t *testing.T, exp ast.Expression, value bool) {
+	lit, ok := exp.(*ast.BooleanLiteral)
+	assert.True(t, ok)
+	assert.Equal(t, value, lit.Value)
+	assert.Equal(t, fmt.Sprintf("%t", value), lit.TokenLiteral())
 }
