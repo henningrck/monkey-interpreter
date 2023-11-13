@@ -169,14 +169,60 @@ func TestInfixExpressions(t *testing.T) {
 
 		expStmt, ok := program.Statements[0].(*ast.ExpressionStatement)
 		assert.True(t, ok)
-
-		infixExp, ok := expStmt.Expression.(*ast.InfixExpression)
-		assert.True(t, ok)
-		assert.Equal(t, test.operator, infixExp.Operator)
-
-		checkLiteral(t, infixExp.Left, test.leftValue)
-		checkLiteral(t, infixExp.Right, test.rightValue)
+		checkInfixExpression(t, expStmt.Expression, test.leftValue, test.operator, test.rightValue)
 	}
+}
+
+func TestIfExpression(t *testing.T) {
+	input := `if (x < y) { x }`
+
+	l := lexer.New(input)
+	p := parser.New(l)
+
+	program := p.ParseProgram()
+	checkParserErrors(t, p)
+	assert.Len(t, program.Statements, 1)
+
+	expStmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	assert.True(t, ok)
+
+	ifExp, ok := expStmt.Expression.(*ast.IfExpression)
+	assert.True(t, ok)
+	checkInfixExpression(t, ifExp.Condition, "x", "<", "y")
+	assert.Len(t, ifExp.Consequence.Statements, 1)
+	assert.Nil(t, ifExp.Alternative)
+
+	consequence, ok := ifExp.Consequence.Statements[0].(*ast.ExpressionStatement)
+	assert.True(t, ok)
+	checkLiteral(t, consequence.Expression, "x")
+}
+
+func TestIfElseExpression(t *testing.T) {
+	input := `if (x < y) { x } else { y }`
+
+	l := lexer.New(input)
+	p := parser.New(l)
+
+	program := p.ParseProgram()
+	checkParserErrors(t, p)
+	assert.Len(t, program.Statements, 1)
+
+	expStmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	assert.True(t, ok)
+
+	ifExp, ok := expStmt.Expression.(*ast.IfExpression)
+	assert.True(t, ok)
+	checkInfixExpression(t, ifExp.Condition, "x", "<", "y")
+	assert.Len(t, ifExp.Consequence.Statements, 1)
+	assert.Len(t, ifExp.Alternative.Statements, 1)
+
+	consequence, ok := ifExp.Consequence.Statements[0].(*ast.ExpressionStatement)
+	assert.True(t, ok)
+	checkLiteral(t, consequence.Expression, "x")
+
+	alternative, ok := ifExp.Alternative.Statements[0].(*ast.ExpressionStatement)
+	assert.True(t, ok)
+	checkLiteral(t, alternative.Expression, "y")
 }
 
 func TestOperatorPrecedenceParsing(t *testing.T) {
@@ -283,6 +329,15 @@ func TestOperatorPrecedenceParsing(t *testing.T) {
 func checkParserErrors(t *testing.T, p *parser.Parser) {
 	errors := p.Errors()
 	assert.Len(t, errors, 0)
+}
+
+func checkInfixExpression(t *testing.T, exp ast.Expression, leftValue any, operator string, rightValue any) {
+	infixExp, ok := exp.(*ast.InfixExpression)
+	assert.True(t, ok)
+	assert.Equal(t, operator, infixExp.Operator)
+
+	checkLiteral(t, infixExp.Left, leftValue)
+	checkLiteral(t, infixExp.Right, rightValue)
 }
 
 func checkLiteral(t *testing.T, exp ast.Expression, expected any) {
