@@ -11,51 +11,52 @@ import (
 )
 
 func TestLetStatements(t *testing.T) {
-	input := `let x = 5;
-	let y = 10;
-	let something = 838383;`
-
-	l := lexer.New(input)
-	p := parser.New(l)
-
-	program := p.ParseProgram()
-	checkParserErrors(t, p)
-	assert.Len(t, program.Statements, 3)
-
 	tests := []struct {
+		input              string
 		expectedIdentifier string
+		expectedValue      any
 	}{
-		{"x"},
-		{"y"},
-		{"something"},
+		{"let x = 5;", "x", 5},
+		{"let y = true;", "y", true},
+		{"let something = y;", "something", "y"},
 	}
 
-	for i, test := range tests {
-		stmt := program.Statements[i]
-		letStmt, ok := stmt.(*ast.LetStatement)
+	for _, test := range tests {
+		l := lexer.New(test.input)
+		p := parser.New(l)
+
+		program := p.ParseProgram()
+		checkParserErrors(t, p)
+		assert.Len(t, program.Statements, 1)
+
+		letStmt, ok := program.Statements[0].(*ast.LetStatement)
 		assert.True(t, ok)
-		assert.Equal(t, "let", stmt.TokenLiteral())
 		assert.Equal(t, test.expectedIdentifier, letStmt.Name.Value)
-		assert.Equal(t, test.expectedIdentifier, letStmt.Name.TokenLiteral())
+		checkLiteral(t, letStmt.Value, test.expectedValue)
 	}
 }
 
 func TestReturnStatements(t *testing.T) {
-	input := `return 5;
-	return 10;
-	return 993322;`
+	tests := []struct {
+		input         string
+		expectedValue any
+	}{
+		{"return 5;", 5},
+		{"return 10;", 10},
+		{"return 993322;", 993322},
+	}
 
-	l := lexer.New(input)
-	p := parser.New(l)
+	for _, test := range tests {
+		l := lexer.New(test.input)
+		p := parser.New(l)
 
-	program := p.ParseProgram()
-	checkParserErrors(t, p)
-	assert.Len(t, program.Statements, 3)
+		program := p.ParseProgram()
+		checkParserErrors(t, p)
+		assert.Len(t, program.Statements, 1)
 
-	for _, stmt := range program.Statements {
-		_, ok := stmt.(*ast.ReturnStatement)
+		retStmt, ok := program.Statements[0].(*ast.ReturnStatement)
 		assert.True(t, ok)
-		assert.Equal(t, "return", stmt.TokenLiteral())
+		checkLiteral(t, retStmt.ReturnValue, test.expectedValue)
 	}
 }
 
