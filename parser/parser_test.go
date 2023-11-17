@@ -109,6 +109,63 @@ func TestBooleanLiteralExpressions(t *testing.T) {
 	checkLiteral(t, expStmt.Expression, true)
 }
 
+func TestFunctionLiteralExpressions(t *testing.T) {
+	input := `fn(x, y) { x + y; }`
+
+	l := lexer.New(input)
+	p := parser.New(l)
+
+	program := p.ParseProgram()
+	checkParserErrors(t, p)
+	assert.Len(t, program.Statements, 1)
+
+	expStmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	assert.True(t, ok)
+
+	function, ok := expStmt.Expression.(*ast.FunctionLiteral)
+	assert.True(t, ok)
+	assert.Len(t, function.Parameters, 2)
+	checkLiteral(t, function.Parameters[0], "x")
+	checkLiteral(t, function.Parameters[1], "y")
+	assert.Len(t, function.Body.Statements, 1)
+
+	bodyExpStmt, ok := function.Body.Statements[0].(*ast.ExpressionStatement)
+	assert.True(t, ok)
+	checkInfixExpression(t, bodyExpStmt.Expression, "x", "+", "y")
+}
+
+func TestFunctionLiteralParameters(t *testing.T) {
+	tests := []struct {
+		input          string
+		expectedParams []string
+	}{
+		{input: "fn() {};", expectedParams: []string{}},
+		{input: "fn(x) {};", expectedParams: []string{"x"}},
+		{input: "fn(x, y) {};", expectedParams: []string{"x", "y"}},
+		{input: "fn(x, y, z) {};", expectedParams: []string{"x", "y", "z"}},
+	}
+
+	for _, test := range tests {
+		l := lexer.New(test.input)
+		p := parser.New(l)
+
+		program := p.ParseProgram()
+		checkParserErrors(t, p)
+		assert.Len(t, program.Statements, 1)
+
+		expStmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+		assert.True(t, ok)
+
+		funcLit, ok := expStmt.Expression.(*ast.FunctionLiteral)
+		assert.True(t, ok)
+		assert.Len(t, funcLit.Parameters, len(test.expectedParams))
+
+		for i, ident := range test.expectedParams {
+			checkLiteral(t, funcLit.Parameters[i], ident)
+		}
+	}
+}
+
 func TestPrefixExpressions(t *testing.T) {
 	tests := []struct {
 		input    string
