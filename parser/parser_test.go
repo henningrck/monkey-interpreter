@@ -282,6 +282,28 @@ func TestIfElseExpression(t *testing.T) {
 	checkLiteral(t, alternative.Expression, "y")
 }
 
+func TestCallExpression(t *testing.T) {
+	input := "add(1, 2 * 3, 4 + 5);"
+
+	l := lexer.New(input)
+	p := parser.New(l)
+
+	program := p.ParseProgram()
+	checkParserErrors(t, p)
+	assert.Len(t, program.Statements, 1)
+
+	expStmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	assert.True(t, ok)
+
+	callExp, ok := expStmt.Expression.(*ast.CallExpression)
+	assert.True(t, ok)
+	checkLiteral(t, callExp.Function, "add")
+	assert.Len(t, callExp.Arguments, 3)
+	checkLiteral(t, callExp.Arguments[0], 1)
+	checkInfixExpression(t, callExp.Arguments[1], 2, "*", 3)
+	checkInfixExpression(t, callExp.Arguments[2], 4, "+", 5)
+}
+
 func TestOperatorPrecedenceParsing(t *testing.T) {
 	tests := []struct {
 		input    string
@@ -370,6 +392,18 @@ func TestOperatorPrecedenceParsing(t *testing.T) {
 		{
 			"!(true == true)",
 			"(!(true == true))",
+		},
+		{
+			"a + add(b * c) + d",
+			"((a + add((b * c))) + d)",
+		},
+		{
+			"add(a, b, 1, 2 * 3, 4 + 5, add(6, 7 * 8))",
+			"add(a, b, 1, (2 * 3), (4 + 5), add(6, (7 * 8)))",
+		},
+		{
+			"add(a + b + c * d / f + g)",
+			"add((((a + b) + ((c * d) / f)) + g))",
 		},
 	}
 
